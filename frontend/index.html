@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WaveForm - Album Sharing & Reviews</title>
+    
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Header / navigation -->
+    <header id="site-header">
+        <div class="container">
+            <a id="site-logo" href="#" onclick="showView('feed-view')">WaveForm</a>
+            <nav id="main-nav">
+                <ul id="nav-list">
+                    <li class="logged-in-nav hidden">
+                        <a href="#" onclick="showView('feed-view')">Feed</a>
+                    </li>
+                    <li class="logged-in-nav hidden">
+                        <a href="#" onclick="showView('search-view')">Search</a>
+                    </li>
+                    <li class="logged-in-nav hidden">
+                        <a href="#" onclick="showView('post-view')">Post Review</a>
+                    </li>
+                    <li class="logged-out-nav">
+                        <button class="nav-button" onclick="showView('login-view')">Login</button>
+                    </li>
+                    <li class="logged-out-nav">
+                        <button class="nav-button primary-button" onclick="showView('register-view')">Register</button>
+                    </li>
+                    <li class="logged-in-nav hidden">
+                        <button class="nav-button" id="logout-button">Logout</button>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <!-- contains all content, but only one section is displayed at a time, controlled with JS. -->
+    <main id="app-main" class="container">
+
+        <!-- login section -->
+        <section id="login-view" class="app-view">
+            <div id="login-success-message" class="success-message hidden"></div>
+            <h2>Login to Your Account</h2>
+            <form id="login-form" class="form-card">
+                <label for="login-username">Username</label>
+                <input type="text" id="login-username" required>
+                
+                <label for="login-password">Password</label>
+                <input type="password" id="login-password" required>
+                
+                <p id="login-error-message" class="error-message hidden"></p>
+                <button type="submit" class="primary-button">Login</button>
+                <p class="switch-form">New user? <a href="#" onclick="showView('register-view')">Register here</a></p>
+            </form>
+        </section>
+
+        <!-- Register section -->
+        <section id="register-view" class="app-view hidden">
+            <h2>Create a New Account</h2>
+            <form id="register-form" class="form-card">
+                <label for="register-username">Username</label>
+                <input type="text" id="register-username" required>
+
+                <label for="register-email">Email address</label>
+                <input type="email" id="register-email" required>
+
+                <label for="register-password">Password</label>
+                <input type="password" id="register-password" required>
+                
+                <p id="register-error-message" class="error-message hidden"></p>
+                <button type="submit" class="primary-button">Register</button>
+                <p class="switch-form">Already registered? <a href="#" onclick="showView('login-view')">Log in</a></p>
+            </form>
+        </section>
+
+        <!-- Home / feed section -->
+        <section id="feed-view" class="app-view hidden">
+            <h2>Your Exclusive Feed</h2>
+            <p class="app-description">This feed exclusively shows content uploaded by users you are following.</p>
+            <!-- inside this container is a dummy post -->
+            <div id="feed-container">
+                <article class="post-card">
+                    <h3 class="post-title">Album Review: 'Equus by Ne Obliviscaris'</h3>
+                    <p class="post-meta">Posted by @resemi</p>
+                    <p class="post-content">A timeless masterpiece.</p>
+                </article>
+                </div>
+        </section>
+        
+        <!-- Search section -->
+        <section id="search-view" class="app-view hidden">
+            <h2>Search Users and Content</h2>
+            
+            <div class="tab-controls">
+                <button id="user-search-tab" class="active-tab">Search Users</button>
+                <button id="content-search-tab">Search Contents</button>
+            </div>
+
+            <div id="user-search-panel" class="search-panel">
+                <form id="user-search-form" class="search-form">
+                    <input type="text" id="user-search-term" placeholder="Search for a user to follow (e.g., 'Tom')" required>
+                    <button type="submit">Search</button>
+                </form>
+                <div id="user-search-results" class="results-list">
+                    </div>
+            </div>
+
+            <div id="content-search-panel" class="search-panel hidden">
+                <form id="content-search-form" class="search-form">
+                    <input type="text" id="content-search-term" placeholder="Search albums or reviews (e.g., 'football')" required>
+                    <button type="submit">Search</button>
+                </form>
+                <div id="content-search-results" class="results-list">
+                    </div>
+            </div>
+        </section>
+
+        <!-- Post content section -->
+        <section id="post-view" class="app-view hidden">
+            <h2>Post an Album Review or Content</h2>
+            <form id="post-content-form" class="form-card">
+                <label for="post-title">Album Title / Post Title</label>
+                <input type="text" id="post-title" required>
+
+                <label for="post-text">Your Review / Description</label>
+                <textarea id="post-text" rows="5" required></textarea>
+                
+                <label for="post-image">Upload Album Art (Image/Binary File)</label>
+                <input type="file" id="post-image" accept="image/*,.pdf,.zip">
+                
+                <p id="post-error-message" class="error-message hidden"></p>
+                <button type="submit" class="primary-button">Share Content</button>
+            </form>
+        </section>
+
+    </main>
+    
+    <script src="app.js"></script> 
+</body>
+</html>
