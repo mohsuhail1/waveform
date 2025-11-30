@@ -8,15 +8,27 @@ const port = 8080;
 const BASE_PATH = '/M01033526'; 
 
 // MongoDB setup
-// Default MongoDB port is 27017
 const uri = "mongodb://localhost:27017";
 const client = new MongoClient(uri, { serverApi: { version: ServerApiVersion.v1 } });
 let db;
 
-// Express middleware
+// Express middleware - ORDER MATTERS!
 app.use(express.json()); 
 
-// Simple session setup
+// CORS middleware (for Live Server)
+app.use((req, res, next) => {
+    res.header('Access-Control-Allow-Origin', 'http://127.0.0.1:5500');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type');
+    res.header('Access-Control-Allow-Credentials', 'true');
+    
+    if (req.method === 'OPTIONS') {
+        return res.sendStatus(200);
+    }
+    next();
+});
+
+// Session setup
 app.use(session({
     secret: '727',
     resave: false,
@@ -24,10 +36,16 @@ app.use(session({
     cookie: { secure: false }
 }));
 
+// Request logging (for debugging)
+app.use((req, res, next) => {
+    console.log(`${req.method} ${req.path}`);
+    next();
+});
+
 // Function to check if the user is authenticated
 function isAuthenticated(req, res, next) {
     if (req.session.userId) {
-        next(); // User is authenticated, proceed to the route handler
+        next();
     } else {
         res.status(401).json({ error: 'Authentication required.' });
     }
@@ -58,20 +76,17 @@ function implementRoutes() {
         res.status(200).json({ message: 'WaveForm server running for M01033526' })
     });
 
-    // -----------------------------------------------------
-    // 1. REGISTRATION WEB SERVICE (POST /users)
-    // -----------------------------------------------------
+    // REGISTRATION WEB SERVICE (POST /users)
     app.post(BASE_PATH + '/users', async (req, res) => {
+        console.log('Registration attempt:', req.body);
         const usersCollection = db.collection('users');
         const { username, email, password } = req.body;
 
-        // 1. Basic Validation
         if (!username || !email || !password) {
             return res.status(400).json({ error: 'All fields are required.' });
         }
 
         try {
-            // 2. Check for existing user (uniqueness check)
             const existingUser = await usersCollection.findOne({ 
                 $or: [{ username }, { email }] 
             });
@@ -79,7 +94,6 @@ function implementRoutes() {
                 return res.status(409).json({ error: 'Username or email already exists.' });
             }
 
-            // 3. Create new user document
             const newUser = {
                 username,
                 email,
@@ -88,10 +102,9 @@ function implementRoutes() {
                 following: []
             };
 
-            // 4. Insert into MongoDB
             await usersCollection.insertOne(newUser);
+            console.log('User registered:', username);
 
-            // 5. Success Response
             res.status(201).json({ message: 'Registration successful. Please log in.' });
 
         } catch (error) {
@@ -100,9 +113,9 @@ function implementRoutes() {
         }
     });
 
-    // -----------------------------------------------------
-    // 2. LOGIN WEB SERVICE (POST /login)
-    // -----------------------------------------------------
+
+
+    // LOGIN WEB SERVICE (POST /login)
     app.post(BASE_PATH + '/login', async (req, res) => {
         const usersCollection = db.collection('users');
         const { username, password } = req.body;
@@ -136,9 +149,8 @@ function implementRoutes() {
         }
     });
 
-    // -----------------------------------------------------
-    // 3. LOGOUT WEB SERVICE (DELETE /login)
-    // -----------------------------------------------------
+
+    // LOGOUT WEB SERVICE (DELETE /login)
     app.delete(BASE_PATH + '/login', isAuthenticated, (req, res) => {
         // isAuthenticated check ensures only logged-in users can reach here
         req.session.destroy(err => {
@@ -148,9 +160,8 @@ function implementRoutes() {
         });
     });
 
-    // -----------------------------------------------------
-    // 4. USER SEARCH WEB SERVICE (GET /users)
-    // -----------------------------------------------------
+
+    // USER SEARCH WEB SERVICE (GET /users)
     app.get(BASE_PATH + '/users', isAuthenticated, async (req, res) => {
         const usersCollection = db.collection('users');
         const searchTerm = req.query.q; // Query parameter 'q' (e.g., /users?q=tom)
@@ -174,42 +185,219 @@ function implementRoutes() {
         }
     });
     
-    // -----------------------------------------------------
-    // 5. CONTENT POSTING WEB SERVICE (POST /contents)
-    // -----------------------------------------------------
+
+    // CONTENT POSTING WEB SERVICE (POST /contents)
     app.post(BASE_PATH + '/contents', isAuthenticated, async (req, res) => {
-        const contentsCollection = db.collection('contents');
-        const { title, text } = req.body;
+    console.log('Content posting attempt:', req.body);
+    const contentsCollection = db.collection('contents');
+    const usersCollection = db.collection('users');
+    const { title, text } = req.body;
+    
+    const userId = req.session.userId;
+
+    if (!title || !text) {
+        return res.status(400).json({ error: 'Title and content are required.' });
+    }
+
+    try {
+        // *** GET THE USERNAME FROM THE DATABASE ***
+        const user = await usersCollection.findOne({ _id: new ObjectId(userId) });
         
-        // The user ID comes from the established session
-        const userId = req.session.userId;
-
-        if (!title || !text) {
-            return res.status(400).json({ error: 'Title and content are required.' });
+        if (!user) {
+            return res.status(404).json({ error: 'User not found.' });
         }
 
-        try {
-            // Create the content document
-            const newContent = {
-                userId: new ObjectId(userId), // Convert string ID back to ObjectId for MongoDB
-                username: req.body.username,
-                title: title,
-                text: text,
-                timestamp: new Date(),
-                // Placeholder for image file path (to be added with file upload logic later)
-                imagePath: null 
-            };
+        // Create the content document
+        const newContent = {
+            userId: new ObjectId(userId), // MongoDB ObjectId
+            username: user.username,      // Get username from database, not from request body
+            title: title,
+            text: text,
+            timestamp: new Date(),
+            imagePath: null 
+        };
 
-            // Insert into the 'contents' collection
-            await contentsCollection.insertOne(newContent);
+        // Insert into the 'contents' collection
+        const result = await contentsCollection.insertOne(newContent);
+        console.log('Content posted successfully by:', user.username);
 
-            // Success Response
-            res.status(201).json({ message: 'Content posted successfully.' });
+        // Success Response
+        res.status(201).json({ message: 'Content posted successfully.' });
 
-        } catch (error) {
-            console.error("Content posting error:", error);
-            res.status(500).json({ error: 'Internal server error during content posting.' });
+    } catch (error) {
+        console.error("Content posting error:", error);
+        res.status(500).json({ error: 'Internal server error during content posting.' });
+    }
+    });
+
+    // CONTENT SEARCH (GET /contents)
+    app.get(BASE_PATH + '/contents', isAuthenticated, async (req, res) => {
+    const contentsCollection = db.collection('contents');
+    const searchTerm = req.query.q;
+
+    if (!searchTerm) {
+        return res.status(400).json({ error: 'Search term (q) is required.' });
+    }
+
+    try {
+        const query = {
+            $or: [
+                { title: { $regex: searchTerm, $options: 'i' } },
+                { text: { $regex: searchTerm, $options: 'i' } }
+            ]
+        };
+
+        const contents = await contentsCollection.find(query).toArray();
+
+        res.status(200).json({ contents });
+    } catch (error) {
+        console.error("Content search error:", error);
+        res.status(500).json({ error: 'Internal server error during search.' });
+    }
+    });
+
+    // FOLLOW USER (POST /follow)
+    app.post(BASE_PATH + '/follow/:username', isAuthenticated, async (req, res) => {
+    const usersCollection = db.collection('users');
+    const currentUserId = req.session.userId;
+    const usernameToFollow = req.params.username;
+
+    try {
+        // Get current user
+        const currentUser = await usersCollection.findOne({ _id: new ObjectId(currentUserId) });
+        
+        // Get user to follow
+        const userToFollow = await usersCollection.findOne({ username: usernameToFollow });
+
+        if (!userToFollow) {
+            return res.status(404).json({ error: 'User not found.' });
         }
+
+        // preventing user from following themselves
+        if (currentUser.username === usernameToFollow) {
+            return res.status(400).json({ error: 'You cannot follow yourself.' });
+        }
+
+        // Check if already following
+        if (currentUser.following && currentUser.following.includes(usernameToFollow)) {
+            return res.status(400).json({ error: 'Already following this user.' });
+        }
+
+        // Update current user's following list
+        await usersCollection.updateOne(
+            { _id: new ObjectId(currentUserId) },
+            { $addToSet: { following: usernameToFollow } }
+        );
+
+        // Update followed user's followers list
+        await usersCollection.updateOne(
+            { username: usernameToFollow },
+            { $addToSet: { followers: currentUser.username } }
+        );
+
+        console.log(`${currentUser.username} is now following ${usernameToFollow}`);
+        res.status(200).json({ message: `You are now following ${usernameToFollow}` });
+
+    } catch (error) {
+        console.error("Follow error:", error);
+        res.status(500).json({ error: 'Internal server error during follow.' });
+    }
+    });
+
+    // UNFOLLOW USER (DELETE /follow)
+    app.delete(BASE_PATH + '/follow/:username', isAuthenticated, async (req, res) => {
+    const usersCollection = db.collection('users');
+    const currentUserId = req.session.userId;
+    const usernameToUnfollow = req.params.username;
+
+    try {
+        // Get current user
+        const currentUser = await usersCollection.findOne({ _id: new ObjectId(currentUserId) });
+        
+        // Get user to unfollow
+        const userToUnfollow = await usersCollection.findOne({ username: usernameToUnfollow });
+
+        if (!userToUnfollow) {
+            return res.status(404).json({ error: 'User not found.' });
+        }
+
+        // Check if actually following
+        if (!currentUser.following || !currentUser.following.includes(usernameToUnfollow)) {
+            return res.status(400).json({ error: 'You are not following this user.' });
+        }
+
+        // Remove from current user's following list
+        await usersCollection.updateOne(
+            { _id: new ObjectId(currentUserId) },
+            { $pull: { following: usernameToUnfollow } }
+        );
+
+        // Remove from unfollowed user's followers list
+        await usersCollection.updateOne(
+            { username: usernameToUnfollow },
+            { $pull: { followers: currentUser.username } }
+        );
+
+        console.log(`${currentUser.username} unfollowed ${usernameToUnfollow}`);
+        res.status(200).json({ message: `You have unfollowed ${usernameToUnfollow}` });
+
+    } catch (error) {
+        console.error("Unfollow error:", error);
+        res.status(500).json({ error: 'Internal server error during unfollow.' });
+    }
+    });
+
+    // GET FEED (GET /feed)
+    app.get(BASE_PATH + '/feed', isAuthenticated, async (req, res) => {
+    const usersCollection = db.collection('users');
+    const contentsCollection = db.collection('contents');
+    const currentUserId = req.session.userId;
+
+    try {
+        const currentUser = await usersCollection.findOne({ _id: new ObjectId(currentUserId) });
+        console.log('Current user:', currentUser.username);
+        console.log('Following:', currentUser.following);
+
+        if (!currentUser.following || currentUser.following.length === 0) {
+            console.log('User is not following anyone');
+            return res.status(200).json({ feed: [], message: 'You are not following anyone yet.' });
+        }
+
+        const followedUsers = await usersCollection.find(
+            { username: { $in: currentUser.following } }
+        ).toArray();
+        
+        console.log('Followed users:', followedUsers.map(u => u.username));
+
+        const followedUserIds = followedUsers.map(user => user._id);
+        console.log('Followed user IDs:', followedUserIds);
+
+        const feed = await contentsCollection.find(
+            { userId: { $in: followedUserIds } }
+        ).sort({ timestamp: -1 }).toArray();
+        
+        console.log('Feed contents found:', feed.length);
+
+        res.status(200).json({ feed });
+
+    } catch (error) {
+        console.error("Feed error:", error);
+        res.status(500).json({ error: 'Internal server error retrieving feed.' });
+    }
+    });
+    
+    // get login status (GET /login)
+    app.get(BASE_PATH + '/login', (req, res) => {
+    if (req.session.userId) {
+        res.status(200).json({ 
+            loggedIn: true, 
+            userId: req.session.userId 
+        });
+    } else {
+        res.status(200).json({ 
+            loggedIn: false 
+        });
+    }
     });
 }
 
