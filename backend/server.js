@@ -1,6 +1,7 @@
 const express = require('express');
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const session = require('express-session');
+const path = require('path');
 const app = express();
 const port = 8080;
 
@@ -12,7 +13,7 @@ const uri = "mongodb://localhost:27017";
 const client = new MongoClient(uri, { serverApi: { version: ServerApiVersion.v1 } });
 let db;
 
-// Express middleware - ORDER MATTERS!
+// Express middleware 
 app.use(express.json()); 
 
 // CORS middleware (for Live Server)
@@ -41,6 +42,11 @@ app.use((req, res, next) => {
     console.log(`${req.method} ${req.path}`);
     next();
 });
+
+// this tells express to serve files from the frontend directory 
+// when the request path starts with the student id base path
+app.use(BASE_PATH, express.static(path.join(__dirname, '../frontend')));
+
 
 // Function to check if the user is authenticated
 function isAuthenticated(req, res, next) {
