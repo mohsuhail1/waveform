@@ -5,7 +5,8 @@ const appState = {
     userId: null
 };
 
-// *** 1. CONFIGURATION ***
+// 1. CONFIGURATION
+const BASE_URL = 'http://localhost:8080';
 const BASE_PATH = '/M01033526'; 
 
 // GENERIC AJAX HELPER FUNCTION
@@ -14,33 +15,28 @@ const BASE_PATH = '/M01033526';
  * Sends data to the web service and returns the parsed JSON result.
  */
 async function sendRequest(path, method, data = null) {
-    const url = BASE_PATH + path;
+    const url = BASE_URL + BASE_PATH + path; // Use BASE_URL + BASE_PATH
     
     try {
         const options = {
             method: method,
             headers: { 'Content-Type': 'application/json' },
-            credentials: 'include' // Ensures session cookies are sent/received
+            credentials: 'include'
         };
         if (data) {
             options.body = JSON.stringify(data);
         }
 
-        // Fetching the resource from the server
         const response = await fetch(url, options);
-
-        // All client/server exchange must be JSON formatted (except file uploads)
         const result = await response.json(); 
 
         if (!response.ok) {
-            // If the response status is not 2xx, throw an error
             const errorMessage = result.error || `Server responded with status: ${response.status}`;
             throw new Error(errorMessage);
         }
         
-        return result; // Successful JSON result
+        return result;
     } catch (error) {
-        // Network errors or errors thrown above are caught here
         console.error('AJAX Error:', error.message);
         throw error; 
     }
@@ -49,6 +45,18 @@ async function sendRequest(path, method, data = null) {
 // CORE VIEW MANAGEMENT
 
 function showView(viewId) {
+    const protectedViews = ['feed-view', 'search-view', 'post-view'];
+    
+    if (protectedViews.includes(viewId) && !appState.isLoggedIn) {
+        // Redirect to login if trying to access protected view while not logged in
+        viewId = 'login-view';
+        displayMessage(
+            'login-error-message',
+            'Please log in to access this page.',
+            false
+        );
+    }
+
     // Hiding all sections with class 'app-view'
     document.querySelectorAll('.app-view').forEach(section => {
         section.classList.add('hidden');
@@ -57,13 +65,20 @@ function showView(viewId) {
     // Show the requested section
     document.getElementById(viewId).classList.remove('hidden');
 
-    // Clear messages when switching views
-    document.querySelectorAll('.error-message, .success-message').forEach(el => {
-        el.classList.add('hidden');
-    });
+    // Clear messages when switching views (except login redirect message)
+    if (!(viewId === 'login-view' && protectedViews.includes(appState.currentView))) {
+        document.querySelectorAll('.error-message, .success-message').forEach(el => {
+            el.classList.add('hidden');
+        });
+    }
 
     appState.currentView = viewId;
     updateNavigation();
+    
+    // LOAD FEED AUTOMATICALLY WHEN VIEWING FEED
+    if (viewId === 'feed-view' && appState.isLoggedIn) {
+        loadFeed();
+    }
 }
 
 // NAVIGATION MANAGEMENT
@@ -163,16 +178,17 @@ async function handleLoginSubmit(event) {
     errorEl.classList.add('hidden');
     if (successEl) successEl.classList.add('hidden'); 
 
-
     try {
         // AJAX POST request to the web service path /login
-        // Successful login establishes a session on the server side
         await sendRequest('/login', 'POST', loginData); 
         
         // Success: Update state and switch to feed view
         appState.isLoggedIn = true;
         appState.userId = username; 
         showView('feed-view');
+        
+        // *** NEW: Load the feed after successful login ***
+        loadFeed();
         
         // Clear forms on successful login (good UX)
         document.getElementById('login-form').reset();
@@ -210,9 +226,155 @@ async function handleLogout() {
     }
 }
 
+// Handles User Search form submission
+async function handleUserSearch(event) {
+    event.preventDefault();
+    const searchTerm = document.getElementById('user-search-term').value;
+    const resultsContainer = document.getElementById('user-search-results');
+    
+    try {
+        const result = await sendRequest(`/users?q=${searchTerm}`, 'GET');
+        
+        resultsContainer.innerHTML = '';
+        
+        if (result.users.length === 0) {
+            resultsContainer.innerHTML = '<p>No users found.</p>';
+            return;
+        }
+        
+        result.users.forEach(user => {
+            const userCard = document.createElement('div');
+            userCard.className = 'user-card';
+            userCard.innerHTML = `
+                <h4>${user.username}</h4>
+                <p>${user.email}</p>
+                <button onclick="handleFollow('${user.username}')">Follow</button>
+            `;
+            resultsContainer.appendChild(userCard);
+        });
+        
+    } catch (error) {
+        resultsContainer.innerHTML = `<p class="error-message">Search failed: ${error.message}</p>`;
+    }
+}
+
+// Handles following a user
+async function handleFollow(username) {
+    try {
+        const result = await sendRequest(`/follow/${username}`, 'POST');
+        alert(result.message);
+        
+    } catch (error) {
+        alert(`Follow failed: ${error.message}`);
+    }
+}
+
+// Handles Content Search form submission
+async function handleContentSearch(event) {
+    event.preventDefault();
+    const searchTerm = document.getElementById('content-search-term').value;
+    const resultsContainer = document.getElementById('content-search-results');
+    
+    try {
+        const result = await sendRequest(`/contents?q=${searchTerm}`, 'GET');
+        
+        resultsContainer.innerHTML = '';
+        
+        if (result.contents.length === 0) {
+            resultsContainer.innerHTML = '<p>No content found.</p>';
+            return;
+        }
+        
+        result.contents.forEach(content => {
+            const contentCard = document.createElement('article');
+            contentCard.className = 'post-card';
+            contentCard.innerHTML = `
+                <h3 class="post-title">${content.title}</h3>
+                <p class="post-meta">Posted by @${content.username}</p>
+                <p class="post-content">${content.text}</p>
+            `;
+            resultsContainer.appendChild(contentCard);
+        });
+        
+    } catch (error) {
+        resultsContainer.innerHTML = `<p class="error-message">Search failed: ${error.message}</p>`;
+    }
+}
+
+// Loads the user's feed
+async function loadFeed() {
+    const feedContainer = document.getElementById('feed-container');
+    
+    try {
+        const result = await sendRequest('/feed', 'GET');
+        
+        feedContainer.innerHTML = '';
+        
+        if (!result.feed || result.feed.length === 0) {
+            feedContainer.innerHTML = '<p>No posts in your feed yet. Follow users to see their content!</p>';
+            return;
+        }
+        
+        result.feed.forEach(post => {
+            const postCard = document.createElement('article');
+            postCard.className = 'post-card';
+            postCard.innerHTML = `
+                <h3 class="post-title">${post.title}</h3>
+                <p class="post-meta">Posted by @${post.username}</p>
+                <p class="post-content">${post.text}</p>
+                <p class="post-meta">${new Date(post.timestamp).toLocaleString()}</p>
+            `;
+            feedContainer.appendChild(postCard);
+        });
+        
+    } catch (error) {
+        feedContainer.innerHTML = `<p class="error-message">Failed to load feed: ${error.message}</p>`;
+    }
+}
+
+// Handles Post Content form submission (POST /contents)
+async function handlePostContentSubmit(event) {
+    event.preventDefault();
+    const errorMessageEl = document.getElementById('post-error-message');
+    errorMessageEl.classList.add('hidden');
+
+    const title = document.getElementById('post-title').value;
+    const text = document.getElementById('post-text').value;
+
+    // *** REMOVE username from postData - server will get it from session ***
+    const postData = { title, text }; // Don't send username
+
+    try {
+        const result = await sendRequest('/contents', 'POST', postData); 
+        
+        document.getElementById('post-content-form').reset();
+        showView('feed-view');
+        
+        // Reload the feed to show the new post
+        loadFeed();
+
+        alert(result.message || 'Review posted successfully!');
+
+    } catch (error) {
+        displayMessage(
+            'post-error-message', 
+            `Post failed: ${error.message}`, 
+            false
+        );
+    }
+}
+
+// handling user clicking the logo in header to show feed or login depending on appState
+function handleLogoClick() {
+    if (appState.isLoggedIn) {
+        showView('feed-view');
+    } else {
+        showView('login-view');
+    }
+}
+
 
 // INITIALIZATION AND EVENT LISTENERS
-
 document.addEventListener('DOMContentLoaded', () => {
 
     // Set initial navigation state (runs first)
@@ -225,47 +387,14 @@ document.addEventListener('DOMContentLoaded', () => {
     // Attach listener for the logout button
     document.getElementById('logout-button').addEventListener('click', handleLogout);
 
-    // Ensure the correct starting view is shown (login-view)
-    showView(appState.currentView);
-
     // Attach submit listener to the post content form
     document.getElementById('post-content-form').addEventListener('submit', handlePostContentSubmit);
+
+    // *** ADD THESE NEW LISTENERS ***
+    document.getElementById('user-search-form').addEventListener('submit', handleUserSearch);
+    document.getElementById('content-search-form').addEventListener('submit', handleContentSearch);
+
+    // Ensure the correct starting view is shown (login-view)
+    showView(appState.currentView);
 });
 
-
-
-// Handles Post Content form submission (POST /contents)
-async function handlePostContentSubmit(event) {
-    event.preventDefault();
-    const errorMessageEl = document.getElementById('post-error-message');
-    errorMessageEl.classList.add('hidden'); // Clear previous error
-
-    // Extracting data
-    const title = document.getElementById('post-title').value;
-    const text = document.getElementById('post-text').value;
-
-    const postData = { title, text, username: appState.userId }; // Using userId as temp username
-
-    try {
-        // AJAX POST request to the web service path /contents
-        const result = await sendRequest('/contents', 'POST', postData); 
-        
-        // Success: Clear form, switch to feed, and display success message
-        document.getElementById('post-content-form').reset();
-        showView('feed-view');
-
-        displayMessage(
-            'feed-view', // Assuming you have a message element in the feed view
-            result.message || 'Review posted successfully!',
-            true 
-        );
-
-    } catch (error) {
-        // Result or error message displayed to the user
-        displayMessage(
-            'post-error-message', 
-            `Post failed: ${error.message}`, 
-            false
-        );
-    }
-}
