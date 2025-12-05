@@ -68,7 +68,7 @@ body {
 }
 
 #main-nav a, .nav-button {
-    color: var(--card-bg-color);
+    color: var(--accent-color);
     text-decoration: none;
     padding: 8px 12px;
     border-radius: 4px;
@@ -101,6 +101,8 @@ body {
 .primary-button:hover {
     background-color: #c0392b; /* Darker red */
 }
+
+
 
 /* ============================================== */
 /* 4. Main Content and Form Layout */
