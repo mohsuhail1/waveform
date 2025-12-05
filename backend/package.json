@@ -2,7 +2,8 @@
   "dependencies": {
     "express": "^5.2.1",
     "express-session": "^1.18.2",
-    "mongodb": "^7.0.0"
+    "mongodb": "^7.0.0",
+    "multer": "^2.0.2"
   },
   "name": "backend",
   "version": "1.0.0",

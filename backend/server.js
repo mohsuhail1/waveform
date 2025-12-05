@@ -2,6 +2,8 @@ const express = require('express');
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const session = require('express-session');
 const path = require('path');
+const multer = require('multer');
+const fs = require('fs');
 const app = express();
 const port = 8080;
 
@@ -12,6 +14,40 @@ const BASE_PATH = '/M01033526';
 const uri = "mongodb://localhost:27017";
 const client = new MongoClient(uri, { serverApi: { version: ServerApiVersion.v1 } });
 let db;
+
+// using Multer for image uploads
+
+// Create uploads directory if it doesn't exist
+const uploadsDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir);
+}
+
+// Configure multer storage
+const storage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        cb(null, uploadsDir);
+    },
+    filename: function (req, file, cb) {
+        // Generate unique filename: timestamp-originalname
+        const uniqueName = Date.now() + '-' + file.originalname;
+        cb(null, uniqueName);
+    }
+});
+
+const upload = multer({ 
+    storage: storage,
+    limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+    fileFilter: function (req, file, cb) {
+        // Accept images only
+        if (file.mimetype.startsWith('image/')) {
+            cb(null, true);
+        } else {
+            cb(new Error('Only image files are allowed!'), false);
+        }
+    }
+});
+
 
 // Express middleware 
 app.use(express.json()); 
@@ -47,6 +83,8 @@ app.use((req, res, next) => {
 // when the request path starts with the student id base path
 app.use(BASE_PATH, express.static(path.join(__dirname, '../frontend')));
 
+app.use('/uploads', express.static(uploadsDir));
+
 
 // Function to check if the user is authenticated
 function isAuthenticated(req, res, next) {
@@ -80,6 +118,28 @@ function implementRoutes() {
     // TEST ROUTE
     app.get(BASE_PATH + '/', (req, res) => {
         res.status(200).json({ message: 'WaveForm server running for M01033526' })
+    });
+
+    // IMAGE UPLOAD WEB SERVICE ROUTE
+    app.post(BASE_PATH + '/upload', isAuthenticated, upload.single('image'), async (req, res) => {
+        try {
+            if (!req.file) {
+                return res.status(400).json({ error: 'No file uploaded' });
+            }
+            
+            // Save path with leading slash for serving
+            const imagePath = `/uploads/${req.file.filename}`;
+            
+            console.log('Image uploaded:', imagePath);
+            
+            res.status(200).json({ 
+                message: 'Image uploaded successfully',
+                imagePath: imagePath 
+            });
+        } catch (error) {
+            console.error('Upload error:', error);
+            res.status(500).json({ error: 'Upload failed: ' + error.message });
+        }
     });
 
     // REGISTRATION WEB SERVICE (POST /users)
@@ -197,7 +257,7 @@ function implementRoutes() {
     console.log('Content posting attempt:', req.body);
     const contentsCollection = db.collection('contents');
     const usersCollection = db.collection('users');
-    const { title, text } = req.body;
+    const { title, text, imagePath } = req.body;
     
     const userId = req.session.userId;
 
@@ -216,11 +276,11 @@ function implementRoutes() {
         // Create the content document
         const newContent = {
             userId: new ObjectId(userId), // MongoDB ObjectId
-            username: user.username,      // Get username from database, not from request body
+            username: user.username,      // Get username from database
             title: title,
             text: text,
             timestamp: new Date(),
-            imagePath: null 
+            imagePath: imagePath || null 
         };
 
         // Insert into the 'contents' collection
@@ -364,22 +424,29 @@ function implementRoutes() {
         console.log('Current user:', currentUser.username);
         console.log('Following:', currentUser.following);
 
-        if (!currentUser.following || currentUser.following.length === 0) {
-            console.log('User is not following anyone');
-            return res.status(200).json({ feed: [], message: 'You are not following anyone yet.' });
+        // Include current user's posts too 
+        let usernamesToShow = [currentUser.username];
+        
+        if (currentUser.following && currentUser.following.length > 0) {
+            // Add followed users
+            usernamesToShow = usernamesToShow.concat(currentUser.following);
         }
+        
+        console.log('Showing posts from:', usernamesToShow);
 
-        const followedUsers = await usersCollection.find(
-            { username: { $in: currentUser.following } }
+        // Find all users whose posts should be shown
+        const usersToShow = await usersCollection.find(
+            { username: { $in: usernamesToShow } }
         ).toArray();
         
-        console.log('Followed users:', followedUsers.map(u => u.username));
+        console.log('Users to show:', usersToShow.map(u => u.username));
 
-        const followedUserIds = followedUsers.map(user => user._id);
-        console.log('Followed user IDs:', followedUserIds);
+        const userIdsToShow = usersToShow.map(user => user._id);
+        console.log('User IDs to show:', userIdsToShow);
 
+        // Get contents from these users
         const feed = await contentsCollection.find(
-            { userId: { $in: followedUserIds } }
+            { userId: { $in: userIdsToShow } }
         ).sort({ timestamp: -1 }).toArray();
         
         console.log('Feed contents found:', feed.length);
