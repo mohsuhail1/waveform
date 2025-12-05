@@ -307,6 +307,10 @@ async function loadFeed() {
     
     try {
         const result = await sendRequest('/feed', 'GET');
+
+        //debug logs
+        console.log('Full feed result:', result);
+        console.log('Number of posts:', result.feed?.length);
         
         feedContainer.innerHTML = '';
         
@@ -316,11 +320,23 @@ async function loadFeed() {
         }
         
         result.feed.forEach(post => {
+            console.log('Processing post:', post.title);
+            console.log('Post has imagePath?', post.imagePath);
+            console.log('imagePath value:', post.imagePath);
+
             const postCard = document.createElement('article');
             postCard.className = 'post-card';
+            
+            // displaying image of each post
+            let imageHTML = '';
+            if (post.imagePath) {
+                imageHTML = `<img src="${BASE_URL}${post.imagePath}" alt="${post.title}" class="post-image">`;
+            }
+            // buidling html structure for each post in the feed
             postCard.innerHTML = `
                 <h3 class="post-title">${post.title}</h3>
                 <p class="post-meta">Posted by @${post.username}</p>
+                ${imageHTML}
                 <p class="post-content">${post.text}</p>
                 <p class="post-meta">${new Date(post.timestamp).toLocaleString()}</p>
             `;
@@ -340,20 +356,44 @@ async function handlePostContentSubmit(event) {
 
     const title = document.getElementById('post-title').value;
     const text = document.getElementById('post-text').value;
+    const imageFile = document.getElementById('post-image').files[0];
 
-    // *** REMOVE username from postData - server will get it from session ***
-    const postData = { title, text }; // Don't send username
+    // const postData = { title, text };
 
     try {
-        const result = await sendRequest('/contents', 'POST', postData); 
+        // uploading image if selected
+        if (imageFile) {
+            const formData = new FormData();
+            formData.append('image', imageFile);
+
+            const uploadResponse = await fetch(BASE_URL + BASE_PATH + '/upload', {
+                method: 'POST',
+                credentials: 'include',
+                body: formData
+            });
         
+
+            if (!uploadResponse.ok) {
+                throw new error('Image upload failed');
+            }
+
+            const uploadResult = await uploadResponse.json();
+            imagePath = uploadResult.imagePath;
+            console.log('Image uploaded:', imagePath);
+        }
+
+        // posting content with image path
+
+        const postData = { title, text, imagePath };
+        const result = await sendRequest('/contents', 'POST', postData);
+
         document.getElementById('post-content-form').reset();
         showView('feed-view');
-        
-        // Reload the feed to show the new post
+
+        // reloading feed to show the new post
         loadFeed();
 
-        alert(result.message || 'Review posted successfully!');
+        // REMINDER!!! ADD SUCCESS MESSAGE
 
     } catch (error) {
         displayMessage(
