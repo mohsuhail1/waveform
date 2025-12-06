@@ -15,7 +15,7 @@ const BASE_PATH = '/M01033526';
  * Sends data to the web service and returns the parsed JSON result.
  */
 async function sendRequest(path, method, data = null) {
-    const url = BASE_URL + BASE_PATH + path; // Use BASE_URL + BASE_PATH
+    const url = BASE_URL + BASE_PATH + path;
     
     try {
         const options = {
@@ -45,6 +45,7 @@ async function sendRequest(path, method, data = null) {
 // CORE VIEW MANAGEMENT
 
 function showView(viewId) {
+    // these views are hidden for new or logged out users
     const protectedViews = ['feed-view', 'search-view', 'post-view'];
     
     if (protectedViews.includes(viewId) && !appState.isLoggedIn) {
@@ -85,7 +86,6 @@ function showView(viewId) {
 
 function updateNavigation() {
     const loggedInElements = document.querySelectorAll('.logged-in-nav');
-    // CRITICAL FIX: Added '.' to select the class correctly
     const loggedOutElements = document.querySelectorAll('.logged-out-nav'); 
 
     if (appState.isLoggedIn) {
@@ -187,7 +187,7 @@ async function handleLoginSubmit(event) {
         appState.userId = username; 
         showView('feed-view');
         
-        // *** NEW: Load the feed after successful login ***
+        // load feed after successful login
         loadFeed();
         
         // Clear forms on successful login (good UX)
@@ -205,7 +205,6 @@ async function handleLoginSubmit(event) {
 
 // Handles Logout (DELETE /login)
 async function handleLogout() {
-    console.log('Attempting to log out...');
     try {
         // AJAX DELETE request to the web service path /login
         await sendRequest('/login', 'DELETE');
@@ -357,8 +356,6 @@ async function handlePostContentSubmit(event) {
     const title = document.getElementById('post-title').value;
     const text = document.getElementById('post-text').value;
     const imageFile = document.getElementById('post-image').files[0];
-
-    // const postData = { title, text };
 
     try {
         // uploading image if selected
