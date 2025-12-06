@@ -15,8 +15,7 @@ const uri = "mongodb://localhost:27017";
 const client = new MongoClient(uri, { serverApi: { version: ServerApiVersion.v1 } });
 let db;
 
-// using Multer for image uploads
-
+// using Multer for image uploads:
 // Create uploads directory if it doesn't exist
 const uploadsDir = path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadsDir)) {
@@ -52,18 +51,6 @@ const upload = multer({
 // Express middleware 
 app.use(express.json()); 
 
-// CORS middleware (for Live Server)
-app.use((req, res, next) => {
-    res.header('Access-Control-Allow-Origin', 'http://127.0.0.1:5500');
-    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-    res.header('Access-Control-Allow-Headers', 'Content-Type');
-    res.header('Access-Control-Allow-Credentials', 'true');
-    
-    if (req.method === 'OPTIONS') {
-        return res.sendStatus(200);
-    }
-    next();
-});
 
 // Session setup
 app.use(session({
@@ -266,7 +253,7 @@ function implementRoutes() {
     }
 
     try {
-        // *** GET THE USERNAME FROM THE DATABASE ***
+        // getting username from database
         const user = await usersCollection.findOne({ _id: new ObjectId(userId) });
         
         if (!user) {
@@ -415,48 +402,44 @@ function implementRoutes() {
 
     // GET FEED (GET /feed)
     app.get(BASE_PATH + '/feed', isAuthenticated, async (req, res) => {
-    const usersCollection = db.collection('users');
-    const contentsCollection = db.collection('contents');
-    const currentUserId = req.session.userId;
+        const usersCollection = db.collection('users');
+        const contentsCollection = db.collection('contents');
+        const currentUserId = req.session.userId;
 
-    try {
-        const currentUser = await usersCollection.findOne({ _id: new ObjectId(currentUserId) });
-        console.log('Current user:', currentUser.username);
-        console.log('Following:', currentUser.following);
+        try {
+            const currentUser = await usersCollection.findOne({ _id: new ObjectId(currentUserId) });
+            console.log('Current user:', currentUser.username);
+            console.log('Following:', currentUser.following);
 
-        // Include current user's posts too 
-        let usernamesToShow = [currentUser.username];
-        
-        if (currentUser.following && currentUser.following.length > 0) {
-            // Add followed users
-            usernamesToShow = usernamesToShow.concat(currentUser.following);
+            // Check if user is following anyone
+            if (!currentUser.following || currentUser.following.length === 0) {
+                console.log('User is not following anyone');
+                return res.status(200).json({ feed: [], message: 'You are not following anyone yet.' });
+            }
+
+            // Get users that current user is following
+            const followedUsers = await usersCollection.find(
+                { username: { $in: currentUser.following } }
+            ).toArray();
+            
+            console.log('Followed users:', followedUsers.map(u => u.username));
+
+            const followedUserIds = followedUsers.map(user => user._id);
+            console.log('Followed user IDs:', followedUserIds);
+
+            // Get contents ONLY from followed users 
+            const feed = await contentsCollection.find(
+                { userId: { $in: followedUserIds } }
+            ).sort({ timestamp: -1 }).toArray();
+            
+            console.log('Feed contents found:', feed.length);
+
+            res.status(200).json({ feed });
+
+        } catch (error) {
+            console.error("Feed error:", error);
+            res.status(500).json({ error: 'Internal server error retrieving feed.' });
         }
-        
-        console.log('Showing posts from:', usernamesToShow);
-
-        // Find all users whose posts should be shown
-        const usersToShow = await usersCollection.find(
-            { username: { $in: usernamesToShow } }
-        ).toArray();
-        
-        console.log('Users to show:', usersToShow.map(u => u.username));
-
-        const userIdsToShow = usersToShow.map(user => user._id);
-        console.log('User IDs to show:', userIdsToShow);
-
-        // Get contents from these users
-        const feed = await contentsCollection.find(
-            { userId: { $in: userIdsToShow } }
-        ).sort({ timestamp: -1 }).toArray();
-        
-        console.log('Feed contents found:', feed.length);
-
-        res.status(200).json({ feed });
-
-    } catch (error) {
-        console.error("Feed error:", error);
-        res.status(500).json({ error: 'Internal server error retrieving feed.' });
-    }
     });
     
     // get login status (GET /login)
