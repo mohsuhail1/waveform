@@ -288,3 +288,59 @@ body {
     display: block;
     object-fit: cover;
 }
+
+/* pop-up notification styling */
+
+.popup-notification {
+    position: fixed;
+    top: 80px;
+    right: 20px;
+    background-color: var(--card-bg-color);
+    border-left: 4px solid var(--accent-color);
+    padding: 1rem 1.5rem;
+    border-radius: var(--border-radius);
+    box-shadow: 0 4px 12px rbga(0, 0, 0, 0.15);
+    z-index: 1000;
+    max-width: 400px;
+    animation: slideIn 0.3s ease-out;
+}
+
+.popup-notification.success {
+    border-left-color: #27ae60;
+}
+
+.popup-notification.error {
+    border-left-color: var(--accent-color);
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(120%);
+        opacity: 0;
+    }
+   to { 
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes slideOut {
+    from {
+        transform: translateX(0);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(120%);
+        opacity: 0;
+    }
+}
+
+.popup-notification.hiding {
+    animation: slideOut 0.3s ease-in forwards;
+}
+
+#popup-message {
+    margin: 0;
+    font-weight: 500;
+    color: var(--text-color);
+}

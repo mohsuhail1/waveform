@@ -58,6 +58,7 @@ function showView(viewId) {
         );
     }
 
+
     // Hiding all sections with class 'app-view'
     document.querySelectorAll('.app-view').forEach(section => {
         section.classList.add('hidden');
@@ -118,6 +119,25 @@ function displayMessage(elementId, message, isSuccess = true) {
             messageEl.classList.remove('success-message');
         }
     }
+}
+
+// shows a temporary popup notification instead of alerts
+function showPopup(message, isSuccess = true, duration = 3000) {
+    const popup = document.getElementById('popup-notification');
+    const messageEl = document.getElementById('popup-message');
+
+    // set message and styling
+    messageEl.textContent = message;
+    popup.classList.remove('hidden', 'success', 'error', 'hiding');
+    popup.classList.add(isSuccess ? 'success' : 'error');
+
+    // auto dismiss after a set duration
+    setTimeout(() => {
+        popup.classList.add('hiding');
+        setTimeout(() => {
+            popup.classList.add('hidden');
+        }, 300);
+    }, duration);
 }
 
 // FORM HANDLERS (IMPLEMENTED WITH AJAX)
@@ -244,10 +264,14 @@ async function handleUserSearch(event) {
         result.users.forEach(user => {
             const userCard = document.createElement('div');
             userCard.className = 'user-card';
+            // inner html to create user cards with buttons to follow/unfollow
             userCard.innerHTML = `
                 <h4>${user.username}</h4>
                 <p>${user.email}</p>
-                <button onclick="handleFollow('${user.username}')">Follow</button>
+                <div class="user-actions">
+                    <button class="follow-btn" onclick="handleFollow('${user.username}')">Follow</button>
+                    <button class="unfollow-btn" onclick="handleUnfollow('${user.username}')">Unfollow</button>
+                </div>
             `;
             resultsContainer.appendChild(userCard);
         });
@@ -261,10 +285,21 @@ async function handleUserSearch(event) {
 async function handleFollow(username) {
     try {
         const result = await sendRequest(`/follow/${username}`, 'POST');
-        alert(result.message);
+        showPopup(result.message, true);
         
     } catch (error) {
-        alert(`Follow failed: ${error.message}`);
+        showPopup(`Follow failed: ${error.message}`, false);
+    }
+}
+
+// Handles unfollowing a user
+async function handleUnfollow(username) {
+    try {
+        const result = await sendRequest(`/unfollow/${username}`, 'DELETE');
+        showPopup(result.message, true);
+
+    } catch (error) {
+        showPopup(`Unfollow failed: ${error.message}`, false);
     }
 }
 
