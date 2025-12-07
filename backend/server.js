@@ -244,7 +244,7 @@ function implementRoutes() {
     console.log('Content posting attempt:', req.body);
     const contentsCollection = db.collection('contents');
     const usersCollection = db.collection('users');
-    const { title, text, imagePath } = req.body;
+    const { title, text, imagePath, artistName } = req.body;
     
     const userId = req.session.userId;
 
@@ -265,6 +265,7 @@ function implementRoutes() {
             userId: new ObjectId(userId), // MongoDB ObjectId
             username: user.username,      // Get username from database
             title: title,
+            artistName: artistName || null,
             text: text,
             timestamp: new Date(),
             imagePath: imagePath || null 
