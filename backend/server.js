@@ -359,6 +359,8 @@ function implementRoutes() {
 
     // UNFOLLOW USER (DELETE /follow)
     app.delete(BASE_PATH + '/follow/:username', isAuthenticated, async (req, res) => {
+    // debug log
+    console.log('Unfollow route hit for:', req.params.username);
     const usersCollection = db.collection('users');
     const currentUserId = req.session.userId;
     const usernameToUnfollow = req.params.username;
@@ -366,6 +368,8 @@ function implementRoutes() {
     try {
         // Get current user
         const currentUser = await usersCollection.findOne({ _id: new ObjectId(currentUserId) });
+        console.log('Current user following list:', currentUser.following);
+        console.log('Trying to unfollow:', usernameToUnfollow);
         
         // Get user to unfollow
         const userToUnfollow = await usersCollection.findOne({ username: usernameToUnfollow });
