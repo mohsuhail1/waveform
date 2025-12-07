@@ -136,7 +136,7 @@ function showPopup(message, isSuccess = true, duration = 3000) {
         popup.classList.add('hiding');
         setTimeout(() => {
             popup.classList.add('hidden');
-        }, 300);
+        }, 3000);
     }, duration);
 }
 
@@ -295,7 +295,7 @@ async function handleFollow(username) {
 // Handles unfollowing a user
 async function handleUnfollow(username) {
     try {
-        const result = await sendRequest(`/unfollow/${username}`, 'DELETE');
+        const result = await sendRequest(`/follow/${username}`, 'DELETE');
         showPopup(result.message, true);
 
     } catch (error) {
