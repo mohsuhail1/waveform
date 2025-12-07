@@ -379,18 +379,19 @@ async function loadFeed() {
 
             // showing artist info button if artist name exists
             const artistInfoButton = post.artistName
-                ? `<button class="info-button" onclick="fetchArtistInfo(${post.artistName.replace(/'/g, "\\'")}')">
+                ? `<button class="info-button" onclick="fetchArtistInfo('${post.artistName.replace(/'/g, "\\'")}')">
                     Artist info
-                    </button>`
+                   </button>`
                 : '';
             
-            // buidling html structure for each post in the feed
+            // building html structure for each post in the feed
             postCard.innerHTML = `
                 <h3 class="post-title">${post.title}</h3>
+                ${artistHTML}
                 <p class="post-meta">Posted by @${post.username}</p>
                 ${imageHTML}
                 <p class="post-content">${post.text}</p>
-                <p class="post-meta">${new Date(post.timestamp).toLocaleString()}</p>
+                ${artistInfoButton} <p class="post-meta">${new Date(post.timestamp).toLocaleString()}</p>
             `;
             feedContainer.appendChild(postCard);
         });
@@ -461,6 +462,46 @@ function handleLogoClick() {
         showView('feed-view');
     } else {
         showView('login-view');
+    }
+}
+
+// ARTIST INFO MODAL FUNCTIONS
+
+async function fetchArtistInfo(artistName) {
+    const modal = document.getElementById('artist-info-modal');
+    const nameEl = document.getElementById('modal-artist-name');
+    const summaryEl = document.getElementById('modal-artist-summary');
+    const linkEl = document.getElementById('modal-wiki-link');
+
+    // Show loading state
+    nameEl.textContent = artistName;
+    summaryEl.textContent = "Loading information from Wikipedia...";
+    linkEl.classList.add('hidden');
+    modal.classList.remove('hidden');
+
+    try {
+        const result = await sendRequest(`/artist-info?artist=${encodeURIComponent(artistName)}`, 'GET');
+        
+        summaryEl.textContent = result.summary;
+        linkEl.href = result.url;
+        linkEl.textContent = "Read more on Wikipedia";
+        linkEl.classList.remove('hidden');
+
+    } catch (error) {
+        summaryEl.textContent = "Could not retrieve artist information.";
+        linkEl.classList.add('hidden');
+    }
+}
+
+function closeArtistModal() {
+    document.getElementById('artist-info-modal').classList.add('hidden');
+}
+
+// Close modal if user clicks outside the content box
+window.onclick = function(event) {
+    const modal = document.getElementById('artist-info-modal');
+    if (event.target == modal) {
+        closeArtistModal();
     }
 }
 

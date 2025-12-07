@@ -3,6 +3,8 @@ const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const session = require('express-session');
 const path = require('path');
 const multer = require('multer');
+const axios = require('axios');
+const cheerio = require('cheerio');
 const fs = require('fs');
 const app = express();
 const port = 8080;
@@ -105,6 +107,47 @@ function implementRoutes() {
     // TEST ROUTE
     app.get(BASE_PATH + '/', (req, res) => {
         res.status(200).json({ message: 'WaveForm server running for M01033526' })
+    });
+
+    // ARTIST INFO WEB SCRAPING ROUTE (GET /artist-info)
+    app.get(BASE_PATH + '/artist-info', async (req, res) => {
+        const artistName = req.query.artist;
+        if (!artistName) {
+            return res.status(400).json({ error: 'Artist name required' });
+        }
+
+        try {
+            // formatting the artist name for the Wikipedia URL (spaces to underscores)
+            const formattedName = artistName.trim().replace(/\s+/g, '_');
+            const wikiUrl = `https://en.wikipedia.org/wiki/${formattedName}`;
+
+            const response = await axios.get(wikiUrl, {
+                headers: { 'User-Agent': 'WaveFormStudentProject'}
+            });
+            const html = response.data;
+            const $ = cheerio.load(html);
+
+            // scraping the first paragraph of the main content
+            let summary = $('.mw-parser-output > p:not(.mw-empty-elt)').first().text();
+
+            // cleanup: remove citation numbers like [1]
+            summary = summary.replace(/\[\d+\]/g, '');
+
+            if (!summary) {
+                summary = "Could not find a summary for this artist.";
+            }
+
+            res.status(200).json({ 
+                artist: artistName, 
+                summary: summary, 
+                url: wikiUrl 
+            });
+
+        } catch (error) {
+            console.error('Scraping error:', error.message);
+            // Fallback if the page doesn't exist or other error
+            res.status(404).json({ error: 'Artist information not found on Wikipedia.' });
+        }
     });
 
     // IMAGE UPLOAD WEB SERVICE ROUTE
