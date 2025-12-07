@@ -289,7 +289,17 @@ body {
     object-fit: cover;
 }
 
-/* pop-up notification styling */
+/* Artist name styling */
+.post-artist {
+    font-style: italic;
+    color: #7f8c8d;
+    margin-bottom: 0.5rem;
+    font-size: 0.95rem;
+}
+
+/* ============================================== */
+/* 9. POPUP NOTIFICATION STYLING */
+/* ============================================== */
 
 .popup-notification {
     position: fixed;
@@ -344,3 +354,5 @@ body {
     font-weight: 500;
     color: var(--text-color);
 }
+
+

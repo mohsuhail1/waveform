@@ -322,8 +322,14 @@ async function handleContentSearch(event) {
         result.contents.forEach(content => {
             const contentCard = document.createElement('article');
             contentCard.className = 'post-card';
+
+            const artistHTML = content.artistName
+                ? `<p class="post-artist">by ${content.artistName}</p>`
+                : '';
+
             contentCard.innerHTML = `
                 <h3 class="post-title">${content.title}</h3>
+                ${artistHTML}
                 <p class="post-meta">Posted by @${content.username}</p>
                 <p class="post-content">${content.text}</p>
             `;
@@ -366,6 +372,18 @@ async function loadFeed() {
             if (post.imagePath) {
                 imageHTML = `<img src="${BASE_URL}${post.imagePath}" alt="${post.title}" class="post-image">`;
             }
+            // display artist name if available
+            const artistHTML = post.artistName
+                ? `<p class="post-artist">by ${post.artistName}</p>`
+                : '';
+
+            // showing artist info button if artist name exists
+            const artistInfoButton = post.artistName
+                ? `<button class="info-button" onclick="fetchArtistInfo(${post.artistName.replace(/'/g, "\\'")}')">
+                    Artist info
+                    </button>`
+                : '';
+            
             // buidling html structure for each post in the feed
             postCard.innerHTML = `
                 <h3 class="post-title">${post.title}</h3>
@@ -389,6 +407,7 @@ async function handlePostContentSubmit(event) {
     errorMessageEl.classList.add('hidden');
 
     const title = document.getElementById('post-title').value;
+    const artistName = document.getElementById('post-artist').value;
     const text = document.getElementById('post-text').value;
     const imageFile = document.getElementById('post-image').files[0];
 
@@ -416,7 +435,7 @@ async function handlePostContentSubmit(event) {
 
         // posting content with image path
 
-        const postData = { title, text, imagePath };
+        const postData = { title, artistName, text, imagePath };
         const result = await sendRequest('/contents', 'POST', postData);
 
         document.getElementById('post-content-form').reset();
@@ -425,7 +444,7 @@ async function handlePostContentSubmit(event) {
         // reloading feed to show the new post
         loadFeed();
 
-        // REMINDER!!! ADD SUCCESS MESSAGE
+        showPopup('Post created successfully!', true); // success message
 
     } catch (error) {
         displayMessage(

@@ -84,6 +84,16 @@
                <!-- Posts will be loaded here dynamically -->
             </div>
         </section>
+
+        <!-- modal for displaying artist info -->
+        <div id="artist-info-modal" class="modal hidden">
+            <div class="modal-content">
+                <span class="close-modal" onclick="closeArtistModal()">&times;</span>
+                <h3 id="modal-artist-name"></h3>
+                <p id="modal-artist-summary"></p>
+                <a id="modal-wiki-link" href="#" target="_blank">Read more on Wikipedia</a>
+            </div>
+        </div>
         <!-- Search section -->
         <section id="search-view" class="app-view hidden">
             <h2>Search Users and Content</h2>
@@ -118,6 +128,9 @@
             <form id="post-content-form" class="form-card">
                 <label for="post-title">Album Title / Post Title</label>
                 <input type="text" id="post-title" required>
+
+                <label for="post-artist">Artist Name</label>
+                <input type="text" id="post-artist" required>
 
                 <label for="post-text">Your Review / Description</label>
                 <textarea id="post-text" rows="5" required></textarea>
