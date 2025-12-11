@@ -227,14 +227,13 @@ function implementRoutes() {
         }
 
         try {
-            // Find user in MongoDB by username AND password (unsafe direct comparison)
+            // Find user in MongoDB by username and password
             const user = await usersCollection.findOne({ 
                 username: username,
                 password: password
             });
 
             if (user) {
-                // SUCCESS: Session Management
                 // Store MongoDB ObjectId as a string in the session
                 req.session.userId = user._id.toHexString(); 
                 

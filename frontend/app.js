@@ -505,6 +505,20 @@ window.onclick = function(event) {
     }
 }
 
+// tab switching in search page
+function handleTabSwitch(panelIdToShow, tabIdToActivate) {
+    // 1. Deactivate all tabs and hide all panels
+    document.getElementById('user-search-tab').classList.remove('active-tab');
+    document.getElementById('content-search-tab').classList.remove('active-tab');
+    
+    document.getElementById('user-search-panel').classList.add('hidden');
+    document.getElementById('content-search-panel').classList.add('hidden');
+
+    // 2. Activate the selected tab and show the corresponding panel
+    document.getElementById(tabIdToActivate).classList.add('active-tab');
+    document.getElementById(panelIdToShow).classList.remove('hidden');
+}
+
 
 // INITIALIZATION AND EVENT LISTENERS
 document.addEventListener('DOMContentLoaded', () => {
@@ -522,10 +536,19 @@ document.addEventListener('DOMContentLoaded', () => {
     // Attach submit listener to the post content form
     document.getElementById('post-content-form').addEventListener('submit', handlePostContentSubmit);
 
-    // *** ADD THESE NEW LISTENERS ***
+    // listeners for tab switching in search page
+    document.getElementById('user-search-tab').addEventListener('click', () => {
+        handleTabSwitch('user-search-panel', 'user-search-tab');
+    });
+    
+    document.getElementById('content-search-tab').addEventListener('click', () => {
+        handleTabSwitch('content-search-panel', 'content-search-tab');
+    });
+
+    // Attach submit listeners for search forms
     document.getElementById('user-search-form').addEventListener('submit', handleUserSearch);
     document.getElementById('content-search-form').addEventListener('submit', handleContentSearch);
-
+    
     // Ensure the correct starting view is shown (login-view)
     showView(appState.currentView);
 });

@@ -11,6 +11,7 @@
     <!-- Header / navigation -->
     <header id="site-header">
         <div class="container">
+            <!-- using href="#" for easy page switching and preventing page reloads -->
             <a id="site-logo" href="#" onclick="handleLogoClick()">WaveForm</a>
             <nav id="main-nav">
                 <ul id="nav-list">
@@ -114,7 +115,7 @@
 
             <div id="content-search-panel" class="search-panel hidden">
                 <form id="content-search-form" class="search-form">
-                    <input type="text" id="content-search-term" placeholder="Search albums or reviews (e.g., 'football')" required>
+                    <input type="text" id="content-search-term" placeholder="Search albums or reviews (e.g., 'in rainbows')" required>
                     <button type="submit">Search</button>
                 </form>
                 <div id="content-search-results" class="results-list">
