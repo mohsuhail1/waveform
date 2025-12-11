@@ -227,21 +227,21 @@ function implementRoutes() {
         }
 
         try {
-            // 1. Find user in MongoDB by username AND password (unsafe direct comparison)
+            // Find user in MongoDB by username AND password (unsafe direct comparison)
             const user = await usersCollection.findOne({ 
                 username: username,
                 password: password
             });
 
             if (user) {
-                // 2. SUCCESS: Session Management
+                // SUCCESS: Session Management
                 // Store MongoDB ObjectId as a string in the session
                 req.session.userId = user._id.toHexString(); 
                 
-                // 3. Success Response
+                // Success Response
                 res.status(200).json({ message: 'Login successful' });
             } else {
-                // 4. Failure Response
+                // Failure Response
                 res.status(401).json({ error: "Invalid credentials" });
             }
 
