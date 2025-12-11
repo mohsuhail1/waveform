@@ -133,7 +133,13 @@ function implementRoutes() {
             // cleanup: remove citation numbers like [1]
             summary = summary.replace(/\[\d+\]/g, '');
 
-            if (!summary) {
+            // for handling empty summary.
+            // and also handling a case where a band might not have an uncommon name
+            // example: checking artist info for the band Ne Obliviscaris can lead to the
+            // wiki page for the latin translation of the band name.
+            // so, for now I applied a condition for length and in a future version, we can make the
+            // web scraping bot smarter.
+            if (!summary || summary.length<100) {
                 summary = "Could not find a summary for this artist.";
             }
 
